@@ -1,0 +1,56 @@
+// src/app.js
+require('dotenv').config();
+const express = require('express');
+const helmet = require('helmet');
+const cors = require('cors');
+const rateLimit = require('express-rate-limit');
+
+const authRoutes = require('./auth/auth.routes');
+const usersRoutes = require('./users/users.routes');
+const clientesRouter = require('./routes/clientes.router');
+
+const app = express();
+
+// Seguridad y parsers
+app.use(helmet());
+app.use(express.json({ limit: '1mb' }));
+app.use(cors({
+  origin: process.env.CORS_ORIGIN?.split(',') || '*',
+  credentials: true,
+}));
+
+// Rate limit básico
+app.use('/api/', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+}));
+
+// Rutas
+app.use('/api', authRoutes);
+app.use('/api', usersRoutes);
+// Montar el router en la ruta base /api/clientes
+app.use('/api/clientes', clientesRouter);
+
+
+// Healthcheck
+app.get('/health', (_req, res) => res.json({ ok: true }));
+
+// Manejo de errores
+app.use((err, _req, res, _next) => {
+  const status = err.status || 500;
+  res.status(status).json({
+    message: err.message || 'Error interno',
+    ...(process.env.NODE_ENV !== 'production' && { stack: err.stack }),
+  });
+});
+
+// const port = Number(process.env.PORT || 3000);
+// app.listen(port, () => {
+//   console.log(`API escuchando en AdminSystem.mssql.somee.com`);
+// });
+
+
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => {
+  console.log(`Servidor escuchando en el puerto ${PORT}`);
+});
