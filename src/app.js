@@ -28,9 +28,12 @@ app.use('/api/', rateLimit({
 // Rutas
 app.use('/api', authRoutes);
 app.use('/api', usersRoutes);
-// Montar el router en la ruta base /api/clientes
 app.use('/api/clientes', clientesRouter);
 
+// Ruta raíz para Render
+app.get('/', (_req, res) => {
+  res.send('Backend funcionando ✅');
+});
 
 // Healthcheck
 app.get('/health', (_req, res) => res.json({ ok: true }));
@@ -44,12 +47,7 @@ app.use((err, _req, res, _next) => {
   });
 });
 
-// const port = Number(process.env.PORT || 3000);
-// app.listen(port, () => {
-//   console.log(`API escuchando en AdminSystem.mssql.somee.com`);
-// });
-
-
+// Puerto dinámico para Render
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`Servidor escuchando en el puerto ${PORT}`);
