@@ -21,10 +21,29 @@ const app = express();
 // Seguridad y parsers
 app.use(helmet());
 app.use(express.json({ limit: '1mb' }));
+
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',')
+  : [];
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN?.split(',') || '*',
+  origin: function (origin, callback) {
+    // Permitir requests sin "origin" (ej: Postman o cURL)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
 }));
+
+
+app.use((req, res, next) => {
+  console.log('Origin recibido:', req.headers.origin);
+  next();
+});
+
 
 // Rate limit básico
 app.use('/api/', rateLimit({
