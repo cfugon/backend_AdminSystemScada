@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 // Importamos el controlador de Kardex
-const { getKardex } = require('../controllers/kardex.Controller');
+const { getKardex } = require('../controllers/kardex.controller');
 
 // Middleware para validar el token
 const verifyAccess = require('../middleware/verifyAccess');
