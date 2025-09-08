@@ -14,75 +14,50 @@ const recetasRouter = require('./routes/recetas.routes');
 const ordersRouter = require('./routes/orders.routes');
 const kpiRouter = require('./routes/kpi.router');
 
+
+
 const app = express();
 
-// --------------------------
 // Seguridad y parsers
-// --------------------------
 app.use(helmet());
 app.use(express.json({ limit: '1mb' }));
-
-// --------------------------
-// CORS seguro para frontend
-// --------------------------
-
-// Leer la variable de entorno y separar múltiples orígenes si es necesario
-const allowedOrigins = process.env.CORS_ORIGIN?.split(',') || [];
-
 app.use(cors({
-  origin: function(origin, callback) {
-    // Permite solicitudes sin origen (ej. Postman) o desde frontend autorizado
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error(`CORS policy: acceso denegado desde ${origin}`));
-    }
-  },
+  origin: process.env.CORS_ORIGIN?.split(',') || '*',
   credentials: true,
 }));
 
-// --------------------------
 // Rate limit básico
-// --------------------------
 app.use('/api/', rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 300,                 // Máximo 300 requests por ventana
+  windowMs: 15 * 60 * 1000,
+  max: 300,
 }));
 
-// --------------------------
 // Rutas
-// --------------------------
 app.use('/api', authRoutes);
 app.use('/api', usersRoutes);
 
-// Dashboard KPI
+//Dashboard KPI
 app.use('/api/dashboard', kpiRouter);
-
-// Clientes
+// clientes
 app.use('/api/clientes', clientesRouter);
-
-// Kardex
+//karex
 app.use('/api/kardex', kardexRoutes);
-
-// Batch
+//batch
 app.use('/api/batch', batchRouter);
-
-// Recetas
+//recetes
 app.use('/api/Recetas', recetasRouter);
-
-// Ordenes
+//Ordenes
 app.use('/api/Orders', ordersRouter);
 
-// --------------------------
-// Ruta raíz y Healthcheck
-// --------------------------
-app.get('/', (_req, res) => res.send('Backend funcionando ✅'));
+// Ruta raíz para Render
+app.get('/', (_req, res) => {
+  res.send('Backend funcionando ✅');
+});
 
+// Healthcheck
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
-// --------------------------
 // Manejo de errores
-// --------------------------
 app.use((err, _req, res, _next) => {
   const status = err.status || 500;
   res.status(status).json({
@@ -91,9 +66,7 @@ app.use((err, _req, res, _next) => {
   });
 });
 
-// --------------------------
 // Puerto dinámico para Render
-// --------------------------
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`Servidor escuchando en el puerto ${PORT}`);
