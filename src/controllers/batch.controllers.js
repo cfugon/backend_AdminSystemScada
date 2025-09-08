@@ -2,10 +2,11 @@ const { sql, getPool } = require('../db');
 
 
 //con procedimiento almacenado
-async function getClientes(req, res) {
+async function getBatch(req, res) {
   try {
     const { op, p1, p2, p3, p4, p5 } = req.query; // parámetros desde la URL
     if (!op) return res.status(400).json({ success: false, message: 'Parámetro "op" requerido' });
+
 
     const pool = await getPool();
 
@@ -18,31 +19,31 @@ async function getClientes(req, res) {
       .input('p5', sql.VarChar(sql.MAX), p5 || null);
 
 
-    const result = await request.execute('usp_GetClientes'); // llamar al procedimiento almacenado
+    const result = await request.execute('usp_GetBatch'); // llamar al procedimiento almacenado
 
+    console.log('resultado batch', result.recordset);
 
     res.json({ success: true, data: result.recordset });
   } catch (err) {
-    console.error('Error al obtener clientes:', err);
-    res.status(500).json({ success: false, message: 'Error al obtener clientes' });
+    console.error('Error al obtener Kardex:', err);
+    res.status(500).json({ success: false, message: 'Error al obtener Batch' });
   }
 }
 
 //sin procedimiento almacenado
-async function getClientes_test(req, res) {
+async function getkardex_test(req, res) {
   try {
     const pool = await getPool();
     const result = await pool.request().query(`
       select *
-      FROM clientes
-      ORDER BY nombre
+      FROM batch
     `);
 
 
     res.json({ success: true, data: result.recordset });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Error al obtener clientes' });
+    res.status(500).json({ success: false, message: 'Error al obtener batch' });
   }
 }
 
-module.exports = { getClientes };
+module.exports = { getBatch };

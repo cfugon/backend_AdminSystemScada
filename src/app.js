@@ -8,6 +8,13 @@ const rateLimit = require('express-rate-limit');
 const authRoutes = require('./auth/auth.routes');
 const usersRoutes = require('./users/users.routes');
 const clientesRouter = require('./routes/clientes.router');
+const kardexRoutes = require('./routes/kardex.routes');
+const batchRouter = require('./routes/batch.router');
+const recetasRouter = require('./routes/recetas.routes');
+const ordersRouter = require('./routes/orders.routes');
+const kpiRouter = require('./routes/kpi.router');
+
+
 
 const app = express();
 
@@ -28,7 +35,19 @@ app.use('/api/', rateLimit({
 // Rutas
 app.use('/api', authRoutes);
 app.use('/api', usersRoutes);
+
+//Dashboard KPI
+app.use('/api/dashboard', kpiRouter);
+// clientes
 app.use('/api/clientes', clientesRouter);
+//karex
+app.use('/api/kardex', kardexRoutes);
+//batch
+app.use('/api/batch', batchRouter);
+//recetes
+app.use('/api/Recetas', recetasRouter);
+//Ordenes
+app.use('/api/Orders', ordersRouter);
 
 // Ruta raíz para Render
 app.get('/', (_req, res) => {

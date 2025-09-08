@@ -2,7 +2,7 @@ const { sql, getPool } = require('../db');
 
 
 //con procedimiento almacenado
-async function getClientes(req, res) {
+async function getOrders(req, res) {
   try {
     const { op, p1, p2, p3, p4, p5 } = req.query; // parámetros desde la URL
     if (!op) return res.status(400).json({ success: false, message: 'Parámetro "op" requerido' });
@@ -18,13 +18,13 @@ async function getClientes(req, res) {
       .input('p5', sql.VarChar(sql.MAX), p5 || null);
 
 
-    const result = await request.execute('usp_GetClientes'); // llamar al procedimiento almacenado
+    const result = await request.execute('usp_GetOrders'); // llamar al procedimiento almacenado
 
 
     res.json({ success: true, data: result.recordset });
   } catch (err) {
-    console.error('Error al obtener clientes:', err);
-    res.status(500).json({ success: false, message: 'Error al obtener clientes' });
+    console.error('Error al obtener Ordenes:', err);
+    res.status(500).json({ success: false, message: 'Error al obtener Ordenes' });
   }
 }
 
@@ -41,8 +41,8 @@ async function getClientes_test(req, res) {
 
     res.json({ success: true, data: result.recordset });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Error al obtener clientes' });
+    res.status(500).json({ success: false, message: 'Error al obtener Ordenes' });
   }
 }
 
-module.exports = { getClientes };
+module.exports = { getOrders };
