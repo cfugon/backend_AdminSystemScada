@@ -15,7 +15,7 @@ function signAccessToken(user) {
   return jwt.sign(
     { username: user.Username },          // Payload con username
     process.env.JWT_SECRET,               // Clave secreta
-    { subject: String(user.Id)}
+    { subject: String(user.Id) }
   );
 }
 
@@ -24,7 +24,7 @@ function signRefreshToken(user) {
   return jwt.sign(
     { username: user.Username },          // Payload con username
     process.env.REFRESH_SECRET,           // Clave secreta para refresh
-    { subject: String(user.Id)}
+    { subject: String(user.Id) }
   );
 }
 
@@ -114,7 +114,7 @@ async function login(req, res, next) {
     const user = q.recordset[0];
 
     // Comparar contraseña
-    const ok = password=== user.PasswordHash;
+    const ok = password === user.PasswordHash;
     assert(ok, 'Credenciales inválidas', 401);
 
     // Generar sessionId único
@@ -125,7 +125,7 @@ async function login(req, res, next) {
     const access = jwt.sign(
       { username: user.Username, sessionId },
       process.env.JWT_SECRET,
-      { subject: String(user.UsuarioId)}
+      { subject: String(user.UsuarioId) }
     );
 
     const refresh = jwt.sign(
@@ -134,12 +134,28 @@ async function login(req, res, next) {
       { subject: String(user.UsuarioId) }
     );
 
+
+
+    // Buscar acciones/permisos del usuario
+    const accionesQuery = await pool.request()
+      .input('idUsuario', sql.Int, user.UsuarioId)
+      .query(`
+    SELECT a.Id, a.Nombre
+    FROM Acciones a
+    INNER JOIN UsuarioAcciones ua ON a.Id = ua.IdAction
+    WHERE ua.IdUsuario = @idUsuario
+  `);
+
+    const acciones = accionesQuery.recordset;
+
+
+
     // Eliminar sesiones anteriores → solo 1 sesión activa por usuario
     await pool.request()
       .input('userId', sql.Int, user.UsuarioId)
       .query('DELETE FROM dbo.UserSessions WHERE UserId = @userId');
 
-      
+
     // Guardar nueva sesión
     await pool.request()
       .input('userId', sql.Int, user.UsuarioId)
@@ -147,10 +163,11 @@ async function login(req, res, next) {
       .input('sessionId', sql.NVarChar(50), sessionId)
       .query('INSERT INTO dbo.UserSessions (UserId, RefreshToken, SessionId, CreatedAt) VALUES (@userId, @refreshToken, @sessionId, GETDATE())');
 
-      
+
     res.json({
       user: { id: user.UsuarioId, username: user.Usuario, fullName: user.FullName },
-      tokens: { access, refresh }
+      tokens: { access, refresh },
+      acciones
     });
 
   } catch (e) {
@@ -207,4 +224,4 @@ async function refreshToken(req, res, next) {
   }
 }
 
-module.exports = { register, login, refreshToken, signAccessToken,logout };
+module.exports = { register, login, refreshToken, signAccessToken, logout };
