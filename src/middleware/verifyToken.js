@@ -8,6 +8,7 @@ function verifyToken(req, res, next) {
   if (!token) return res.status(401).json({ message: 'NO_TOKEN' });
 
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    console.log('error autentificacoin token',err)
     if (err) {
       if (err.name === 'TokenExpiredError') {
         return res.status(401).json({ message: 'TOKEN_EXPIRED' });

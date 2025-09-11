@@ -58,7 +58,7 @@ async function register(req, res, next) {
       `);
 
     const user = insert.recordset[0];
-    console.log('user insert0', user);
+
 
     // Generar sessionId único
     const sessionId = uuidv4();
@@ -101,7 +101,6 @@ async function login(req, res, next) {
   try {
     const { username, password } = req.body || {};
 
-    console.log('reqbody', req.body);
     assert(typeof username === 'string', 'Username requerido');
     assert(typeof password === 'string', 'Contraseña requerida');
 
@@ -109,9 +108,17 @@ async function login(req, res, next) {
     const q = await pool.request()
       .input('username', sql.NVarChar(100), username)
       .query('select *, password  PasswordHash,Concat(Nombre, Apellido) FullName from Usuario where Usuario =@username');
+    // .query(`
+    //     SELECT u.*, u.password PasswordHash, CONCAT(u.Nombre, u.Apellido) FullName
+    //     FROM Usuario u
+    //     INNER JOIN UsuarioAcciones ua ON u.UsuarioId = ua.IdUsuario
+    //     INNER JOIN Acciones a ON ua.IdAction = a.Id
+    //     WHERE u.Usuario = @username AND a.Nombre = 'APP'
+    //   `);
 
     assert(q.recordset.length === 1, 'Credenciales inválidas', 401);
     const user = q.recordset[0];
+
 
     // Comparar contraseña
     const ok = password === user.PasswordHash;
@@ -165,9 +172,13 @@ async function login(req, res, next) {
 
 
     res.json({
-      user: { id: user.UsuarioId, username: user.Usuario, fullName: user.FullName },
-      tokens: { access, refresh },
-      acciones
+      user: {
+        id: user.UsuarioId,
+        username: user.Usuario,
+        fullName: user.FullName,
+        accesos: acciones  // 👈 aquí agregas los permisos dentro del user
+      },
+      tokens: { access, refresh, sessionId }
     });
 
   } catch (e) {
@@ -182,7 +193,7 @@ async function logout(req, res, next) {
     const { refresh } = req.body || {};
     if (!refresh) return res.status(400).json({ message: 'Refresh token requerido' });
 
-    console.log('refresh', refresh);
+
     const pool = await getPool();
     await pool.request()
       .input('refreshToken', sql.NVarChar(sql.MAX), refresh)
