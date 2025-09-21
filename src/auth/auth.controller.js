@@ -6,6 +6,7 @@ const { assert } = require('../utils/validate'); // Validaciones personalizadas
 const { v4: uuidv4 } = require('uuid'); // Para generar sessionId
 
 
+
 // ========================
 // 🔑 Funciones para crear tokens
 // ========================
@@ -121,8 +122,10 @@ async function login(req, res, next) {
 
 
     // Comparar contraseña
-    const ok = password === user.PasswordHash;
+    const ok = await bcrypt.compare(password, user.PasswordHash);
     assert(ok, 'Credenciales inválidas', 401);
+
+    console.log('POR AQUI', ok);
 
     // Generar sessionId único
     const sessionId = uuidv4();
