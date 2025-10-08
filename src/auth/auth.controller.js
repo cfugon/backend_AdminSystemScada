@@ -108,7 +108,7 @@ async function login(req, res, next) {
     const pool = await getPool();
     const q = await pool.request()
       .input('username', sql.NVarChar(100), username)
-      .query('select *, password  PasswordHash,Concat(Nombre, ,Apellido) FullName from Usuario where Usuario =@username');
+      .query(`select *, password  PasswordHash,Concat(Nombre,' ' ,Apellido) FullName from Usuario where Usuario =@username`);
     // .query(`
     //     SELECT u.*, u.password PasswordHash, CONCAT(u.Nombre, u.Apellido) FullName
     //     FROM Usuario u
