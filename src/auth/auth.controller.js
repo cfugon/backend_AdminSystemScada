@@ -42,7 +42,7 @@ async function register(req, res, next) {
 
     const exists = await pool.request()
       .input('username', sql.NVarChar(100), username)
-      .query('select top 1 *,Concat(Nombre, Apellido) fullName from Usuario where Usuario = @username');
+      .query(`select top 1 *,Concat(Nombre,' ', Apellido) fullName from Usuario where Usuario = @username`);
     assert(exists.recordset.length === 0, 'El usuario ya existe', 409);
 
     const hash = await bcrypt.hash(password, 10);
@@ -108,7 +108,7 @@ async function login(req, res, next) {
     const pool = await getPool();
     const q = await pool.request()
       .input('username', sql.NVarChar(100), username)
-      .query('select *, password  PasswordHash,Concat(Nombre, Apellido) FullName from Usuario where Usuario =@username');
+      .query('select *, password  PasswordHash,Concat(Nombre, ,Apellido) FullName from Usuario where Usuario =@username');
     // .query(`
     //     SELECT u.*, u.password PasswordHash, CONCAT(u.Nombre, u.Apellido) FullName
     //     FROM Usuario u

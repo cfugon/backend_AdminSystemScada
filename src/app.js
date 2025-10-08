@@ -31,6 +31,7 @@ app.use(cors({
     // Permitir requests sin "origin" (ej: Postman o cURL)
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) {
+      console.log('orignes', origin);
       return callback(null, true);
     }
     return callback(new Error('Not allowed by CORS'));
