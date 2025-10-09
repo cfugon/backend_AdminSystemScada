@@ -13,6 +13,7 @@ const batchRouter = require('./routes/batch.router');
 const recetasRouter = require('./routes/recetas.routes');
 const ordersRouter = require('./routes/orders.routes');
 const kpiRouter = require('./routes/kpi.router');
+const resumenDiario = require ('./routes/resumendiario.router');
 
 
 
@@ -68,6 +69,8 @@ app.use('/api/batch', batchRouter);
 app.use('/api/Recetas', recetasRouter);
 //Ordenes
 app.use('/api/Orders', ordersRouter);
+//Resumen diario
+app.use('/api/resumendiario', resumenDiario);
 
 // Ruta raíz para Render
 app.get('/', (_req, res) => {
