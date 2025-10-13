@@ -14,6 +14,7 @@ const recetasRouter = require('./routes/recetas.routes');
 const ordersRouter = require('./routes/orders.routes');
 const kpiRouter = require('./routes/kpi.router');
 const resumenDiario = require ('./routes/resumendiario.router');
+const getResumenVenta = require('./routes/resumenventa.router');
 
 
 
@@ -71,6 +72,8 @@ app.use('/api/Recetas', recetasRouter);
 app.use('/api/Orders', ordersRouter);
 //Resumen diario
 app.use('/api/resumendiario', resumenDiario);
+//Resumen de ventas
+app.use('/api/resumenventa', getResumenVenta);
 
 // Ruta raíz para Render
 app.get('/', (_req, res) => {
