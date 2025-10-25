@@ -246,13 +246,14 @@ where u.Estado = 1 and ua.IdAction = 5 and Usuario =@username`);
 
 
 
+    console.log('log query');
     // Buscar acciones/permisos del usuario
     const clientesQuery = await pool.request()
       .input('idUsuario', sql.Int, user.UsuarioId)
       .query(`
             select c.Id, c.nombre Nombre, C.contacto Contacto, C.telefono Telefono from Usuario u 
     inner join UsuariosClientes uc on u.UsuarioId = uc.UsuarioId
-    inner join Clientes c on uc.ClienteId = c.id where u.Apellido = @idUsuario
+    inner join Clientes c on uc.ClienteId = c.id where u.UsuarioId = @idUsuario
   `);
 
     const clientes = clientesQuery.recordset;
