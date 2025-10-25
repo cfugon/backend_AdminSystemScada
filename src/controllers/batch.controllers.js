@@ -21,7 +21,6 @@ async function getBatch(req, res) {
 
     const result = await request.execute('usp_GetBatch'); // llamar al procedimiento almacenado
 
-    console.log('resultado batch', result.recordset);
 
     res.json({ success: true, data: result.recordset });
   } catch (err) {

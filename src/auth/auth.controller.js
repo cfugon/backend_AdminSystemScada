@@ -188,6 +188,110 @@ async function login(req, res, next) {
     next(e);
   }
 }
+
+
+
+
+// ========================
+// 📌 Login de usuario app clientes
+// ========================
+async function loginClientes(req, res, next) {
+  try {
+    const { username, password } = req.body || {};
+
+    assert(typeof username === 'string', 'Username requerido');
+    assert(typeof password === 'string', 'Contraseña requerida');
+
+    const pool = await getPool();
+    const q = await pool.request()
+      .input('username', sql.NVarChar(100), username)
+      .query(`select u.*, u.password  PasswordHash,Concat(u.Nombre,' ' ,u.Apellido) FullName from Usuario u
+    inner join UsuarioAcciones ua on u.UsuarioId = ua.IdUsuario  
+    inner join UsuariosClientes uc on u.UsuarioId = uc.UsuarioId
+where u.Estado = 1 and ua.IdAction = 5 and Usuario =@username`);
+    // .query(`
+    //     SELECT u.*, u.password PasswordHash, CONCAT(u.Nombre, u.Apellido) FullName
+    //     FROM Usuario u
+    //     INNER JOIN UsuarioAcciones ua ON u.UsuarioId = ua.IdUsuario
+    //     INNER JOIN Acciones a ON ua.IdAction = a.Id
+    //     WHERE u.Usuario = @username AND a.Nombre = 'APP'
+    //   `);
+
+    assert(q.recordset.length === 1, 'Credenciales inválidas', 401);
+    const user = q.recordset[0];
+
+
+    // Comparar contraseña
+    const ok = await bcrypt.compare(password, user.PasswordHash);
+    assert(ok, 'Credenciales inválidas', 401);
+
+    console.log('POR AQUI', ok);
+
+    // Generar sessionId único
+    const sessionId = uuidv4();
+
+
+    // Crear tokens con sessionId
+    const access = jwt.sign(
+      { username: user.Username, sessionId },
+      process.env.JWT_SECRET,
+      { subject: String(user.UsuarioId) }
+    );
+
+    const refresh = jwt.sign(
+      { username: user.Username, sessionId },
+      process.env.REFRESH_SECRET,
+      { subject: String(user.UsuarioId) }
+    );
+
+
+
+    // Buscar acciones/permisos del usuario
+    const accionesQuery = await pool.request()
+      .input('idUsuario', sql.Int, user.UsuarioId)
+      .query(`
+    SELECT a.Id, a.Nombre
+    FROM Acciones a
+    INNER JOIN UsuarioAcciones ua ON a.Id = ua.IdAction
+    WHERE ua.IdUsuario = @idUsuario
+  `);
+
+    const acciones = accionesQuery.recordset;
+
+
+
+    // Eliminar sesiones anteriores → solo 1 sesión activa por usuario
+    await pool.request()
+      .input('userId', sql.Int, user.UsuarioId)
+      .query('DELETE FROM dbo.UserSessions WHERE UserId = @userId');
+
+
+    // Guardar nueva sesión
+    await pool.request()
+      .input('userId', sql.Int, user.UsuarioId)
+      .input('refreshToken', sql.NVarChar(sql.MAX), refresh)
+      .input('sessionId', sql.NVarChar(50), sessionId)
+      .query('INSERT INTO dbo.UserSessions (UserId, RefreshToken, SessionId, CreatedAt) VALUES (@userId, @refreshToken, @sessionId, GETDATE())');
+
+
+    res.json({
+      user: {
+        id: user.UsuarioId,
+        username: user.Usuario,
+        fullName: user.FullName,
+        accesos: acciones  // 👈 aquí agregas los permisos dentro del user
+      },
+      tokens: { access, refresh, sessionId }
+    });
+
+  } catch (e) {
+    next(e);
+  }
+}
+
+
+
+
 // ========================
 // 📌 Logout → elimina la sesión
 // ========================
@@ -238,4 +342,4 @@ async function refreshToken(req, res, next) {
   }
 }
 
-module.exports = { register, login, refreshToken, signAccessToken, logout };
+module.exports = { register, login,loginClientes, refreshToken, signAccessToken, logout };
