@@ -247,16 +247,15 @@ where u.Estado = 1 and ua.IdAction = 5 and Usuario =@username`);
 
 
     // Buscar acciones/permisos del usuario
-    const accionesQuery = await pool.request()
+    const clientesQuery = await pool.request()
       .input('idUsuario', sql.Int, user.UsuarioId)
       .query(`
-    SELECT a.Id, a.Nombre
-    FROM Acciones a
-    INNER JOIN UsuarioAcciones ua ON a.Id = ua.IdAction
-    WHERE ua.IdUsuario = @idUsuario
+            select c.Id, c.nombre Nombre, C.contacto Contacto, C.telefono Telefono from Usuario u 
+    inner join UsuariosClientes uc on u.UsuarioId = uc.UsuarioId
+    inner join Clientes c on uc.ClienteId = c.id where u.Apellido = @idUsuario
   `);
 
-    const acciones = accionesQuery.recordset;
+    const clientes = clientesQuery.recordset;
 
 
 
@@ -279,7 +278,7 @@ where u.Estado = 1 and ua.IdAction = 5 and Usuario =@username`);
         id: user.UsuarioId,
         username: user.Usuario,
         fullName: user.FullName,
-        accesos: acciones  // 👈 aquí agregas los permisos dentro del user
+        clientes: clientes  // 👈 aquí agregas la información del cliente
       },
       tokens: { access, refresh, sessionId }
     });
