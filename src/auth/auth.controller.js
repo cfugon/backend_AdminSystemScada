@@ -284,6 +284,7 @@ where u.Estado = 1 and ua.IdAction = 5 and Usuario =@username`);
     });
 
   } catch (e) {
+    console.log('ERROR', e)
     next(e);
   }
 }
