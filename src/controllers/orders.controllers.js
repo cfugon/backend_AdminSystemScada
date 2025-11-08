@@ -29,74 +29,74 @@ async function getOrders(req, res) {
 }
 
 //sin procedimiento almacenado
-async function getClientes_test(req, res) {
-  try {
-    const pool = await getPool();
-    const result = await pool.request().query(`
-      select *
-      FROM clientes
-      ORDER BY nombre
-    `);
+// async function getClientes_test(req, res) {
+//   try {
+//     const pool = await getPool();
+//     const result = await pool.request().query(`
+//       select *
+//       FROM clientes
+//       ORDER BY nombre
+//     `);
 
 
-    res.json({ success: true, data: result.recordset });
-  } catch (err) {
-    res.status(500).json({ success: false, message: 'Error al obtener Ordenes' });
-  }
-}
+//     res.json({ success: true, data: result.recordset });
+//   } catch (err) {
+//     res.status(500).json({ success: false, message: 'Error al obtener Ordenes' });
+//   }
+// }
 
-async function postOrders(req, res) {
-  try {
-    const { clienteId, IdProyecto, volumen, IdReceta, IdUsuario_ } = req.body;
+// async function postOrders(req, res) {
+//   try {
+//     const { clienteId, IdProyecto, volumen, IdReceta, IdUsuario_ } = req.body;
 
-    // Validaciones básicas
-    if (!clienteId || !IdProyecto || !volumen || !IdUsuario_) {
-      return res.status(400).json({
-        success: false,
-        message: 'Faltan datos obligatorios: clienteId, IdProyecto, volumen, IdUsuario_'
-      });
-    }
+//     // Validaciones básicas
+//     if (!clienteId || !IdProyecto || !volumen || !IdUsuario_) {
+//       return res.status(400).json({
+//         success: false,
+//         message: 'Faltan datos obligatorios: clienteId, IdProyecto, volumen, IdUsuario_'
+//       });
+//     }
 
-    const pool = await getPool();
-    const request = pool.request();
+//     const pool = await getPool();
+//     const request = pool.request();
 
-    request.input('op', sql.Int, 1); // opcional
-    request.input('p1', sql.Int, clienteId);
-    request.input('p2', sql.Int, IdProyecto);
-    request.input('p3', sql.Decimal(18, 2), volumen);
-    request.input('p4', sql.Int, IdReceta ?? null);
-    request.input('p5', sql.Int, IdUsuario_);
+//     request.input('op', sql.Int, 1); // opcional
+//     request.input('p1', sql.Int, clienteId);
+//     request.input('p2', sql.Int, IdProyecto);
+//     request.input('p3', sql.Decimal(18, 2), volumen);
+//     request.input('p4', sql.Int, IdReceta ?? null);
+//     request.input('p5', sql.Int, IdUsuario_);
 
-    const result = await request.execute('usp_PostOrders');
+//     const result = await request.execute('usp_PostOrders');
 
-    const resultData = result.recordset[0];
+//     const resultData = result.recordset[0];
 
-    if (!resultData || resultData.Success === 0) {
-      return res.status(400).json({
-        success: false,
-        message: resultData?.Message || 'Error al crear orden'
-      });
-    }
+//     if (!resultData || resultData.Success === 0) {
+//       return res.status(400).json({
+//         success: false,
+//         message: resultData?.Message || 'Error al crear orden'
+//       });
+//     }
 
-    res.json({
-      success: true,
-      message: resultData.Message,
-      data: {
-        orderId: resultData.OrderId,
-        orderNumber: resultData.OrderNumber,
-        fecha: resultData.FechaLocal
-      }
-    });
+//     res.json({
+//       success: true,
+//       message: resultData.Message,
+//       data: {
+//         orderId: resultData.OrderId,
+//         orderNumber: resultData.OrderNumber,
+//         fecha: resultData.FechaLocal
+//       }
+//     });
 
-  } catch (err) {
-    console.error('Error al crear orden:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Error al crear la orden',
-      error: err.message
-    });
-  }
-}
+//   } catch (err) {
+//     console.error('Error al crear orden:', err);
+//     res.status(500).json({
+//       success: false,
+//       message: 'Error al crear la orden',
+//       error: err.message
+//     });
+//   }
+// }
 
 
 // POST: crear orden
