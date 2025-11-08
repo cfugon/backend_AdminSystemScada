@@ -56,7 +56,7 @@ async function postProyectos(req, res) {
     const request = pool.request();
 
     // Cargar parámetros (8 parámetros)
-    request.input('op', sql.Int, op || 10); // por convención, el op para insertar
+    request.input('op', sql.Int, op || 1); // por convención, el op para insertar
     request.input('p1', sql.Int, clienteId);
     request.input('p2', sql.Int, recetaId);
     request.input('p3', sql.VarChar(200), nombre);
