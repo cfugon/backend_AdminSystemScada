@@ -1,19 +1,13 @@
 const express = require('express');
 const router = express.Router();
 
-// Importamos el controlador de Kardex
-const { getRecetas, getOrders } = require('../controllers/orders.controllers');
+// Asegúrate de que postOrders esté definido y exportado
+const { getOrders, postOrders } = require('../controllers/orders.controllers');
 
-// Middleware para validar el token
-const verifyAccess = require('../middleware/verifyAccess');
+// POST
+router.post('/nuevo', postOrders); // ✅ Debe ser una función
 
-/**
- * Ruta principal de Kardex.
- * Pasa siempre por el middleware verifyAccess.
- * 
- * Ejemplo de uso desde el frontend:
- * GET /api/kardex?op=1&p1=valor1&p2=valor2...
- */
-router.get('/', verifyAccess, getOrders);
+// GET
+router.get('/', getOrders);
 
 module.exports = router;

@@ -1,14 +1,14 @@
 const { sql, getPool } = require('../db');
 
-// ============================================
-// 🔹 GET - Obtener proyectos
-// ============================================
+
+//con procedimiento almacenado
 async function getProyectos(req, res) {
   try {
-    const { op, p1, p2, p3, p4, p5 } = req.query;
+    const { op, p1, p2, p3, p4, p5 } = req.query; // parámetros desde la URL
     if (!op) return res.status(400).json({ success: false, message: 'Parámetro "op" requerido' });
 
     const pool = await getPool();
+
     const request = pool.request()
       .input('op', sql.Int, parseInt(op, 10))
       .input('p1', sql.VarChar(sql.MAX), p1 || null)
@@ -17,7 +17,7 @@ async function getProyectos(req, res) {
       .input('p4', sql.VarChar(sql.MAX), p4 || null)
       .input('p5', sql.VarChar(sql.MAX), p5 || null);
 
-    const result = await request.execute('usp_GetProyectos');
+    const result = await request.execute('usp_GetProyectos'); // llamar al procedimiento almacenado
 
     res.json({ success: true, data: result.recordset });
   } catch (err) {
@@ -26,12 +26,14 @@ async function getProyectos(req, res) {
   }
 }
 
+
 // ============================================
 // 🔹 POST - Agregar nuevo proyecto
 // ============================================
 async function postProyectos(req, res) {
   try {
-    const {
+    // Extraemos datos del cuerpo del request
+    const { 
       op,
       clienteId,
       recetaId,
@@ -40,23 +42,21 @@ async function postProyectos(req, res) {
       activo,
       proyectoGrandeNumber,
       volumen,
-      usuarioId
+      usuarioId // opcional si manejas sesiones o usuarios
     } = req.body;
 
+    console.log(req.body);
 
     // Validaciones básicas
-    if (!clienteId || !recetaId || !nombre || !ubicacion || volumen === undefined || volumen === null) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Datos incompletos. Campos requeridos: clienteId, recetaId, nombre, ubicacion, volumen' 
-      });
+    if (!clienteId || !recetaId || !nombre || !ubicacion || !volumen) {
+      return res.status(400).json({ success: false, message: 'Datos incompletos para crear proyecto' });
     }
 
     const pool = await getPool();
     const request = pool.request();
 
-    // Cargar parámetros
-    request.input('op', sql.Int, op || 1);
+    // Cargar parámetros (8 parámetros)
+    request.input('op', sql.Int, op || 10); // por convención, el op para insertar
     request.input('p1', sql.Int, clienteId);
     request.input('p2', sql.Int, recetaId);
     request.input('p3', sql.VarChar(200), nombre);
@@ -64,49 +64,21 @@ async function postProyectos(req, res) {
     request.input('p5', sql.Bit, activo ? 1 : 0);
     request.input('p6', sql.Bit, proyectoGrandeNumber ? 1 : 0);
     request.input('p7', sql.Decimal(18, 2), volumen);
-    request.input('p8', sql.Int, usuarioId || null);
+    request.input('p8', sql.Int, usuarioId || null); // opcional
 
-    // Ejecutar procedimiento
+    // Ejecutamos el procedimiento almacenado
     const result = await request.execute('usp_PostProyectos');
 
 
-    // Verificar si hay datos en el recordset
-    if (!result.recordset || result.recordset.length === 0) {
-      return res.status(500).json({
-        success: false,
-        message: 'El procedimiento no retornó datos'
-      });
-    }
-
-    const resultData = result.recordset[0];
-
-    // Verificar si fue exitoso
-    if (resultData.Success === 0) {
-      return res.status(400).json({
-        success: false,
-        message: resultData.Message || 'Error al crear proyecto',
-        error: resultData
-      });
-    }
-
-    // Respuesta exitosa
     res.json({
       success: true,
-      message: resultData.Message,
-      data: {
-        projectId: resultData.ProjectId,
-        orderNumber: resultData.OrderNumber,
-        fechaLocal: resultData.FechaLocal
-      }
+      message: 'Proyecto agregado correctamente',
+      data: result.recordset
     });
 
   } catch (err) {
     console.error('❌ Error al insertar proyecto:', err);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error al agregar el proyecto',
-      error: err.message 
-    });
+    res.status(500).json({ success: false, message: 'Error al agregar el proyecto' });
   }
 }
 
