@@ -18,13 +18,17 @@ async function getOrders(req, res) {
       .input('p5', sql.VarChar(sql.MAX), p5 || null);
 
 
+      console.log('op', op, 'p1', p1, 'p2', p2);
+
+
     const result = await request.execute('usp_GetOrders'); // llamar al procedimiento almacenado
 
-
+      console.log('op',op);
+      console.log('p1',p1);
     res.json({ success: true, data: result.recordset });
   } catch (err) {
-    console.error('Error al obtener Ordenes:', err);
-    res.status(500).json({ success: false, message: 'Error al obtener Ordenes' });
+    console.error('Error al ejecutar acción', err);
+    res.status(500).json({ success: false, message: 'Error al ejecutar acción' });
   }
 }
 

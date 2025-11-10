@@ -2,10 +2,12 @@ const express = require('express');
 const router = express.Router();
 
 // Importamos el controlador de Kardex
-const { getRecetas } = require('../controllers/recetascontrollers');
+const { getRecetas, postCrearRecetas } = require('../controllers/recetascontrollers');
+
 
 // Middleware para validar el token
 const verifyAccess = require('../middleware/verifyAccess');
+
 
 /**
  * Ruta principal de Kardex.
@@ -15,5 +17,7 @@ const verifyAccess = require('../middleware/verifyAccess');
  * GET /api/kardex?op=1&p1=valor1&p2=valor2...
  */
 router.get('/', verifyAccess, getRecetas);
+
+router.post('/nuevo', verifyAccess, postCrearRecetas); // ✅ Esta es la ruta Angular
 
 module.exports = router;

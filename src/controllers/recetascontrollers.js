@@ -15,7 +15,7 @@ async function getRecetas(req, res) {
       .input('p2', sql.VarChar(sql.MAX), p2 || null)
       .input('p3', sql.VarChar(sql.MAX), p3 || null)
       .input('p4', sql.VarChar(sql.MAX), p4 || null)
-      .input('p5', sql.VarChar(sql.MAX), p5 || null);
+      .input('p5', sql.VarChar(sql.MAX), p5 || null)
 
 
     const result = await request.execute('usp_GetRecetas'); // llamar al procedimiento almacenado
@@ -28,21 +28,64 @@ async function getRecetas(req, res) {
   }
 }
 
-//sin procedimiento almacenado
-async function getClientes_test(req, res) {
+
+// ============================================
+// CREAR RECETA (usa usp_PostRecetas)
+// ============================================
+async function postCrearRecetas(req, res) {
+  console.log('📥 POST crear receta ejecutado');
   try {
+    const {
+      codigo,
+      cemento,
+      agua,
+      resistencia,
+      arena,
+      gravaTipo1,
+      gravaTipo2,
+      aditivo1,
+      aditivo2,
+      estado
+    } = req.body;
+
+    // Validación
+    if (!codigo || codigo.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'El código de receta es obligatorio'
+      });
+    }
+
     const pool = await getPool();
-    const result = await pool.request().query(`
-      select *
-      FROM clientes
-      ORDER BY nombre
-    `);
 
+    const result = await pool.request()
+      .input('op', sql.Int, 1) // op = 1 para insertar
+      .input('p1', sql.VarChar(sql.MAX), codigo.trim())
+      .input('p2', sql.VarChar(sql.MAX), (cemento ?? 0).toString())
+      .input('p3', sql.VarChar(sql.MAX), (agua ?? 0).toString())
+      .input('p4', sql.VarChar(sql.MAX), (resistencia ?? 0).toString())
+      .input('p5', sql.VarChar(sql.MAX), (arena ?? 0).toString())
+      .input('p6', sql.VarChar(sql.MAX), (gravaTipo1 ?? 0).toString())
+      .input('p7', sql.VarChar(sql.MAX), (gravaTipo2 ?? 0).toString())
+      .input('p8', sql.VarChar(sql.MAX), (aditivo1 ?? 0).toString())
+      .input('p9', sql.VarChar(sql.MAX), (aditivo2 ?? 0).toString())
+      .input('p10', sql.VarChar(sql.MAX), estado ? '1' : '0')
+      .execute('usp_PostRecetas'); // 👈 CORRECTO
 
-    res.json({ success: true, data: result.recordset });
+    res.json({
+      success: true,
+      message: 'Receta creada exitosamente',
+      data: result.recordset[0]
+    });
+
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Error al obtener clientes' });
+    console.error('❌ Error al crear receta:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Error al crear la receta'
+    });
   }
 }
 
-module.exports = { getRecetas };
+
+module.exports = { getRecetas, postCrearRecetas };
