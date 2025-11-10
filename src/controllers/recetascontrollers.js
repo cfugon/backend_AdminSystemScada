@@ -88,4 +88,48 @@ async function postCrearRecetas(req, res) {
 }
 
 
-module.exports = { getRecetas, postCrearRecetas };
+// ============================================
+// ACTUALIZAR RECETA (con tipos correctos)
+// ============================================
+
+async function postActualizarRecetas(req, res) {
+  console.log('📥 POST actualizar receta ejecutado');
+  try {
+    const { id, Estado } = req.body;
+
+    const pool = await getPool();
+
+    const result = await pool.request()
+      .input('op', sql.VarChar(sql.MAX), '2')           // op como VARCHAR
+      .input('p1', sql.VarChar(sql.MAX), id.toString()) // id como VARCHAR 
+      .input('p2', sql.VarChar(sql.MAX), Estado ? '1' : '0') // Estado como '1' o '0'
+      .input('p3', sql.VarChar(sql.MAX), null)           // parámetros opcionales como null
+      .input('p4', sql.VarChar(sql.MAX), null)
+      .input('p5', sql.VarChar(sql.MAX), null)
+      .input('p6', sql.VarChar(sql.MAX), null)
+      .input('p7', sql.VarChar(sql.MAX), null)
+      .input('p8', sql.VarChar(sql.MAX), null)
+      .input('p9', sql.VarChar(sql.MAX), null)
+      .input('p10', sql.VarChar(sql.MAX), null)
+      .execute('usp_PostRecetas');
+
+    res.json({
+      success: true,
+      message: 'Receta actualizada exitosamente'
+    });
+
+  } catch (err) {
+    console.error('❌ Error al actualizar receta:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Error al actualizar la receta',
+      err
+    });
+  }
+}
+
+
+
+
+
+module.exports = { getRecetas, postCrearRecetas, postActualizarRecetas };
