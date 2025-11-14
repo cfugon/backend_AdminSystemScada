@@ -17,6 +17,8 @@ const resumenDiario = require ('./routes/resumendiario.router');
 const getResumenVenta = require('./routes/resumenventa.router');
 const proyectosRouter = require('./routes/proyectos.router');
 
+// Importar las rutas de usuarios
+const usuariosRoutes = require('./routes/usuarios.routes');
 
 
 const app = express();
@@ -56,7 +58,7 @@ app.use('/api/', rateLimit({
 }));
 
 // Rutas
-app.use('/api', authRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api', usersRoutes);
 
 //Dashboard KPI
@@ -77,6 +79,43 @@ app.use('/api/resumendiario', resumenDiario);
 app.use('/api/resumenventa', getResumenVenta);
 //Proyectos
 app.use('/api/proyectos', proyectosRouter);
+// Usar las rutas
+app.use('/api/usuarios', usuariosRoutes);
+
+
+
+// 🔍 Endpoint de diagnóstico
+app.get('/api/routes', (req, res) => {
+  const routes = [];
+  
+  app._router.stack.forEach((middleware) => {
+    if (middleware.route) {
+      // Rutas directas
+      routes.push({
+        path: middleware.route.path,
+        methods: Object.keys(middleware.route.methods)
+      });
+    } else if (middleware.name === 'router') {
+      // Rutas de routers
+      middleware.handle.stack.forEach((handler) => {
+        if (handler.route) {
+          const basePath = middleware.regexp.source
+            .replace('\\/?', '')
+            .replace('(?=\\/|$)', '')
+            .replace(/\\/g, '');
+          
+          routes.push({
+            path: basePath + handler.route.path,
+            methods: Object.keys(handler.route.methods)
+          });
+        }
+      });
+    }
+  });
+  
+  res.json({ routes });
+});
+
 
 // Ruta raíz para Render
 app.get('/', (_req, res) => {
