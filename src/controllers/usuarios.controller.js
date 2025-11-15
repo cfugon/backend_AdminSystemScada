@@ -203,10 +203,11 @@ async function createUsuario(req, res) {
  * Params: usuarioId
  * Body: { nombreCompleto, email, telefono, puesto, activo }
  */
+
 async function updateUsuario(req, res) {
   try {
     const { usuarioId } = req.params;
-    const { nombreCompleto, email, telefono, puesto, activo } = req.body;
+    const { nombreCompleto, email, telefono, puesto, activo, contrasena } = req.body;
 
     if (!usuarioId) {
       return res.status(400).json({ 
@@ -229,6 +230,14 @@ async function updateUsuario(req, res) {
       return res.status(400).json({ 
         success: false, 
         message: 'Formato de email inválido' 
+      });
+    }
+
+    // ✅ Validar contraseña si se proporciona
+    if (contrasena && contrasena.length < 6) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'La contraseña debe tener al menos 6 caracteres' 
       });
     }
 
@@ -263,15 +272,40 @@ async function updateUsuario(req, res) {
       });
     }
 
-    // Actualizar usuario
-    await pool.request()
+    // ✅ Encriptar contraseña si se proporciona
+    let hashedPassword = null;
+    if (contrasena && contrasena.trim() !== '') {
+      const saltRounds = 10;
+      hashedPassword = await bcrypt.hash(contrasena, saltRounds);
+    }
+
+    // ✅ Actualizar usuario (con o sin contraseña)
+    let query = '';
+    const request = pool.request()
       .input('UsuarioID', sql.Int, parseInt(usuarioId, 10))
       .input('NombreCompleto', sql.VarChar(100), nombreCompleto)
       .input('Email', sql.VarChar(100), email)
       .input('Telefono', sql.VarChar(20), telefono || null)
       .input('Puesto', sql.VarChar(50), puesto || null)
-      .input('Activo', sql.Bit, activo ? 1 : 0)
-      .query(`
+      .input('Activo', sql.Bit, activo ? 1 : 0);
+
+    if (hashedPassword) {
+      // ✅ Actualizar CON contraseña
+      request.input('Contrasena', sql.VarChar(255), hashedPassword);
+      query = `
+        UPDATE UsuariosApp
+        SET NombreCompleto = @NombreCompleto,
+            Email = @Email,
+            Telefono = @Telefono,
+            Puesto = @Puesto,
+            Activo = @Activo,
+            Contrasena = @Contrasena,
+            FechaModificacion = GETDATE()
+        WHERE UsuarioID = @UsuarioID
+      `;
+    } else {
+      // ✅ Actualizar SIN contraseña
+      query = `
         UPDATE UsuariosApp
         SET NombreCompleto = @NombreCompleto,
             Email = @Email,
@@ -280,11 +314,19 @@ async function updateUsuario(req, res) {
             Activo = @Activo,
             FechaModificacion = GETDATE()
         WHERE UsuarioID = @UsuarioID
-      `);
+      `;
+    }
+
+    await request.query(query);
+
+    // ✅ Mensaje personalizado según si se cambió la contraseña
+    const mensaje = hashedPassword 
+      ? 'Usuario y contraseña actualizados correctamente' 
+      : 'Usuario actualizado correctamente';
 
     res.json({ 
       success: true, 
-      message: 'Usuario actualizado correctamente' 
+      message: mensaje
     });
 
   } catch (err) {
