@@ -90,6 +90,17 @@ async function login(req, res, next) {
       });
     }
 
+    console.log('🔍 DEBUGGING PASSWORD COMPARISON:');
+    console.log('Password recibido:', password);
+    console.log('Password length:', password.length);
+    console.log('Password bytes:', Buffer.from(password).toString('hex'));
+    console.log('Hash de BD:', user.Contrasena);
+    console.log('Hash length:', user.Contrasena?.length);
+    console.log('Hash preview:', user.Contrasena?.substring(0, 30));
+
+
+
+
     // Comparar contraseña
     const passwordMatch = await bcrypt.compare(password, user.Contrasena);
     console.log('🔒 Resultado de bcrypt.compare:', passwordMatch);
@@ -111,7 +122,7 @@ async function login(req, res, next) {
     const access = jwt.sign(
       { username: user.NombreUsuario, sessionId },
       process.env.JWT_SECRET,
-      { 
+      {
         subject: String(user.UsuarioID),
         expiresIn: process.env.JWT_EXPIRES || '15m'
       }
@@ -120,7 +131,7 @@ async function login(req, res, next) {
     const refresh = jwt.sign(
       { username: user.NombreUsuario, sessionId },
       process.env.REFRESH_SECRET,
-      { 
+      {
         subject: String(user.UsuarioID),
         expiresIn: process.env.REFRESH_EXPIRES || '30d'
       }
@@ -193,10 +204,10 @@ async function login(req, res, next) {
         activo: user.Activo,
         accesos: accesos
       },
-      tokens: { 
-        access, 
-        refresh, 
-        sessionId 
+      tokens: {
+        access,
+        refresh,
+        sessionId
       }
     });
 
@@ -209,40 +220,40 @@ async function login(req, res, next) {
 // 📌 Registro de usuario (opcional)
 // ========================
 async function register(req, res, next) {
-    try {
-      const { username, password, fullName, email, telefono, puesto } = req.body || {};
+  try {
+    const { username, password, fullName, email, telefono, puesto } = req.body || {};
 
-      assert(typeof username === 'string' && username.length >= 3, 'Username inválido');
-      assert(typeof password === 'string' && password.length >= 6, 'La contraseña debe tener al menos 6 caracteres');
-      assert(typeof fullName === 'string' && fullName.length >= 3, 'Nombre completo requerido');
-      assert(typeof email === 'string' && email.includes('@'), 'Email inválido');
+    assert(typeof username === 'string' && username.length >= 3, 'Username inválido');
+    assert(typeof password === 'string' && password.length >= 6, 'La contraseña debe tener al menos 6 caracteres');
+    assert(typeof fullName === 'string' && fullName.length >= 3, 'Nombre completo requerido');
+    assert(typeof email === 'string' && email.includes('@'), 'Email inválido');
 
-      const pool = await getPool();
+    const pool = await getPool();
 
-      // Verificar si el usuario ya existe
-      const exists = await pool.request()
-        .input('username', sql.NVarChar(100), username)
-        .input('email', sql.NVarChar(100), email)
-        .query(`
+    // Verificar si el usuario ya existe
+    const exists = await pool.request()
+      .input('username', sql.NVarChar(100), username)
+      .input('email', sql.NVarChar(100), email)
+      .query(`
         SELECT UsuarioID 
         FROM UsuariosApp 
         WHERE NombreUsuario = @username OR Email = @email
       `);
 
-      assert(exists.recordset.length === 0, 'El usuario o email ya existe', 409);
+    assert(exists.recordset.length === 0, 'El usuario o email ya existe', 409);
 
-      // Encriptar contraseña
-      const hash = await bcrypt.hash(password, 10);
+    // Encriptar contraseña
+    const hash = await bcrypt.hash(password, 10);
 
-      // Insertar nuevo usuario
-      const insert = await pool.request()
-        .input('nombreUsuario', sql.NVarChar(50), username)
-        .input('nombreCompleto', sql.NVarChar(100), fullName)
-        .input('email', sql.NVarChar(100), email)
-        .input('contrasena', sql.NVarChar(255), hash)
-        .input('telefono', sql.NVarChar(20), telefono || null)
-        .input('puesto', sql.NVarChar(50), puesto || null)
-        .query(`
+    // Insertar nuevo usuario
+    const insert = await pool.request()
+      .input('nombreUsuario', sql.NVarChar(50), username)
+      .input('nombreCompleto', sql.NVarChar(100), fullName)
+      .input('email', sql.NVarChar(100), email)
+      .input('contrasena', sql.NVarChar(255), hash)
+      .input('telefono', sql.NVarChar(20), telefono || null)
+      .input('puesto', sql.NVarChar(50), puesto || null)
+      .query(`
         INSERT INTO UsuariosApp (
           NombreUsuario, 
           NombreCompleto, 
@@ -270,101 +281,101 @@ async function register(req, res, next) {
         )
       `);
 
-      const user = insert.recordset[0];
+    const user = insert.recordset[0];
 
-      // Generar sessionId único
-      const sessionId = uuidv4();
+    // Generar sessionId único
+    const sessionId = uuidv4();
 
-      // Crear tokens
-      const access = jwt.sign(
-        { username: user.NombreUsuario, sessionId },
-        process.env.JWT_SECRET,
-        {
-          subject: String(user.UsuarioID),
-          expiresIn: process.env.JWT_EXPIRES || '15m'
-        }
-      );
+    // Crear tokens
+    const access = jwt.sign(
+      { username: user.NombreUsuario, sessionId },
+      process.env.JWT_SECRET,
+      {
+        subject: String(user.UsuarioID),
+        expiresIn: process.env.JWT_EXPIRES || '15m'
+      }
+    );
 
-      const refresh = jwt.sign(
-        { username: user.NombreUsuario, sessionId },
-        process.env.REFRESH_SECRET,
-        {
-          subject: String(user.UsuarioID),
-          expiresIn: process.env.REFRESH_EXPIRES || '30d'
-        }
-      );
+    const refresh = jwt.sign(
+      { username: user.NombreUsuario, sessionId },
+      process.env.REFRESH_SECRET,
+      {
+        subject: String(user.UsuarioID),
+        expiresIn: process.env.REFRESH_EXPIRES || '30d'
+      }
+    );
 
-      // Guardar sesión en DB
-      await pool.request()
-        .input('userId', sql.Int, user.UsuarioID)
-        .input('refreshToken', sql.NVarChar(sql.MAX), refresh)
-        .input('sessionId', sql.NVarChar(50), sessionId)
-        .query(`
+    // Guardar sesión en DB
+    await pool.request()
+      .input('userId', sql.Int, user.UsuarioID)
+      .input('refreshToken', sql.NVarChar(sql.MAX), refresh)
+      .input('sessionId', sql.NVarChar(50), sessionId)
+      .query(`
         INSERT INTO dbo.UserSessions (UserId, RefreshToken, SessionId, CreatedAt) 
         VALUES (@userId, @refreshToken, @sessionId, GETDATE())
       `);
 
-      res.status(201).json({
-        user: {
-          id: user.UsuarioID,
-          username: user.NombreUsuario,
-          fullName: user.NombreCompleto,
-          email: user.Email
-        },
-        tokens: { access, refresh, sessionId }
-      });
+    res.status(201).json({
+      user: {
+        id: user.UsuarioID,
+        username: user.NombreUsuario,
+        fullName: user.NombreCompleto,
+        email: user.Email
+      },
+      tokens: { access, refresh, sessionId }
+    });
 
-    } catch (e) {
-      console.error('Error en registro:', e);
-      next(e);
-    }
+  } catch (e) {
+    console.error('Error en registro:', e);
+    next(e);
   }
+}
 
-  // ========================
-  // 📌 Logout → elimina la sesión
-  // ========================
-  async function logout(req, res, next) {
-    try {
-      const { refresh, sessionId } = req.body || {};
+// ========================
+// 📌 Logout → elimina la sesión
+// ========================
+async function logout(req, res, next) {
+  try {
+    const { refresh, sessionId } = req.body || {};
 
-      if (!refresh && !sessionId) {
-        return res.status(400).json({ message: 'Refresh token o sessionId requerido' });
-      }
-
-      const pool = await getPool();
-
-      if (sessionId) {
-        await pool.request()
-          .input('sessionId', sql.NVarChar(50), sessionId)
-          .query('DELETE FROM dbo.UserSessions WHERE SessionId = @sessionId');
-      } else {
-        await pool.request()
-          .input('refreshToken', sql.NVarChar(sql.MAX), refresh)
-          .query('DELETE FROM dbo.UserSessions WHERE RefreshToken = @refreshToken');
-      }
-
-      res.json({ message: 'Sesión cerrada correctamente' });
-    } catch (e) {
-      console.error('Error en logout:', e);
-      next(e);
+    if (!refresh && !sessionId) {
+      return res.status(400).json({ message: 'Refresh token o sessionId requerido' });
     }
-  }
 
-  // ========================
-  // 📌 Refresh token → nuevo access
-  // ========================
-  async function refreshToken(req, res, next) {
-    try {
-      const { refresh, sessionId } = req.body || {};
-      assert(typeof refresh === 'string', 'Refresh token requerido', 401);
+    const pool = await getPool();
 
-      const pool = await getPool();
-
-      // Verificar que el refresh token existe en la DB
-      const check = await pool.request()
+    if (sessionId) {
+      await pool.request()
+        .input('sessionId', sql.NVarChar(50), sessionId)
+        .query('DELETE FROM dbo.UserSessions WHERE SessionId = @sessionId');
+    } else {
+      await pool.request()
         .input('refreshToken', sql.NVarChar(sql.MAX), refresh)
-        .input('sessionId', sql.NVarChar(50), sessionId || null)
-        .query(`
+        .query('DELETE FROM dbo.UserSessions WHERE RefreshToken = @refreshToken');
+    }
+
+    res.json({ message: 'Sesión cerrada correctamente' });
+  } catch (e) {
+    console.error('Error en logout:', e);
+    next(e);
+  }
+}
+
+// ========================
+// 📌 Refresh token → nuevo access
+// ========================
+async function refreshToken(req, res, next) {
+  try {
+    const { refresh, sessionId } = req.body || {};
+    assert(typeof refresh === 'string', 'Refresh token requerido', 401);
+
+    const pool = await getPool();
+
+    // Verificar que el refresh token existe en la DB
+    const check = await pool.request()
+      .input('refreshToken', sql.NVarChar(sql.MAX), refresh)
+      .input('sessionId', sql.NVarChar(50), sessionId || null)
+      .query(`
         SELECT us.*, u.NombreUsuario, u.Activo
         FROM dbo.UserSessions us
         INNER JOIN UsuariosApp u ON us.UserId = u.UsuarioID
@@ -372,38 +383,38 @@ async function register(req, res, next) {
         ${sessionId ? 'AND us.SessionId = @sessionId' : ''}
       `);
 
-      assert(check.recordset.length === 1, 'Refresh token inválido o expirado', 401);
+    assert(check.recordset.length === 1, 'Refresh token inválido o expirado', 401);
 
-      const session = check.recordset[0];
+    const session = check.recordset[0];
 
-      // Verificar que el usuario siga activo
-      assert(session.Activo === true || session.Activo === 1, 'Usuario inactivo', 403);
+    // Verificar que el usuario siga activo
+    assert(session.Activo === true || session.Activo === 1, 'Usuario inactivo', 403);
 
-      // Decodificar payload del refresh token
-      const payload = jwt.verify(refresh, process.env.REFRESH_SECRET);
+    // Decodificar payload del refresh token
+    const payload = jwt.verify(refresh, process.env.REFRESH_SECRET);
 
-      // Crear un nuevo access token
-      const access = jwt.sign(
-        { username: session.NombreUsuario, sessionId: session.SessionId },
-        process.env.JWT_SECRET,
-        {
-          subject: String(payload.sub),
-          expiresIn: process.env.JWT_EXPIRES || '15m'
-        }
-      );
+    // Crear un nuevo access token
+    const access = jwt.sign(
+      { username: session.NombreUsuario, sessionId: session.SessionId },
+      process.env.JWT_SECRET,
+      {
+        subject: String(payload.sub),
+        expiresIn: process.env.JWT_EXPIRES || '15m'
+      }
+    );
 
-      res.json({ access });
-    } catch (e) {
-      console.error('Error en refresh token:', e);
-      e.status = 401;
-      next(e);
-    }
+    res.json({ access });
+  } catch (e) {
+    console.error('Error en refresh token:', e);
+    e.status = 401;
+    next(e);
   }
+}
 
-  module.exports = {
-    register,
-    login,
-    refreshToken,
-    signAccessToken,
-    logout
-  };
+module.exports = {
+  register,
+  login,
+  refreshToken,
+  signAccessToken,
+  logout
+};

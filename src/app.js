@@ -9,6 +9,7 @@ const authRoutes = require('./auth/auth.routes');
 const usersRoutes = require('./users/users.routes');
 const clientesRouter = require('./routes/clientes.router');
 const kardexRoutes = require('./routes/kardex.routes');
+const kardexMovimientosRoutes = require('./routes/kardexMovimientos.routes');
 const batchRouter = require('./routes/batch.router');
 const recetasRouter = require('./routes/recetas.routes');
 const ordersRouter = require('./routes/orders.routes');
@@ -67,6 +68,8 @@ app.use('/api/dashboard', kpiRouter);
 app.use('/api/clientes', clientesRouter);
 //karex
 app.use('/api/kardex', kardexRoutes);
+//karex Movimientos
+app.use('/api/kardexMovimientos', kardexMovimientosRoutes);
 //batch
 app.use('/api/batch', batchRouter);
 //recetes
