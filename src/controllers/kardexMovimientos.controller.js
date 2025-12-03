@@ -2,41 +2,56 @@
 const { getPool, sql } = require('../db');
 
 /**
- * 📊 Obtener registros de Kardex
+ * 📊 Obtener registros de Kardex usando usp_ObtenerKardexDetallado
+ * Este SP devuelve el kardex con saldos calculados correctamente
  */
 async function getKardexMovimientos(req, res, next) {
   try {
-    const { op, p1, p2, p3, p4, p5 } = req.query;
+    const { fechaInicio, fechaFin } = req.query;
 
-    console.log('📥 Consulta Kardex Movimientos:', { op, p1, p2, p3, p4, p5 });
+    console.log('📥 Consulta Kardex Detallado:', { fechaInicio, fechaFin });
+
+    // Validar parámetros
+    if (!fechaInicio || !fechaFin) {
+      return res.status(400).json({
+        success: false,
+        message: 'Se requieren fechaInicio y fechaFin'
+      });
+    }
 
     const pool = await getPool();
 
+    // ✅ Ejecutar stored procedure con las fechas
     const result = await pool.request()
-      .input('op', sql.Int, parseInt(op) || 1)
-      .input('p1', sql.VarChar(sql.MAX), p1 || '0')
-      .input('p2', sql.VarChar(sql.MAX), p2 || '0')
-      .input('p3', sql.VarChar(sql.MAX), p3 || '0')
-      .input('p4', sql.VarChar(sql.MAX), p4 || '0')
-      .input('p5', sql.VarChar(sql.MAX), p5 || '0')
-      .execute('dbo.usp_GetKardexMovimientos');
+      .input('FechaInicio', sql.Date, fechaInicio)
+      .input('FechaFin', sql.Date, fechaFin)
+      .execute('dbo.usp_ObtenerKardexDetallado');
 
     console.log('✅ Registros obtenidos:', result.recordset.length);
 
+    // Log de muestra de datos
+    if (result.recordset.length > 0) {
+      console.log('📊 Primer registro:', result.recordset[0]);
+      console.log('📊 Último registro:', result.recordset[result.recordset.length - 1]);
+    }
+
     res.json({
       success: true,
-      data: result.recordset
+      data: result.recordset,
+      count: result.recordset.length
     });
 
   } catch (error) {
     console.error('❌ Error en getKardexMovimientos:', error);
-    next(error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener kardex',
+      error: error.message
+    });
   }
 }
 
-/**
- * 💾 Crear nuevo registro de Kardex (ENTRADA)
- */
+
 
 async function crearKardexMovimiento(req, res, next) {
   try {
@@ -46,9 +61,9 @@ async function crearKardexMovimiento(req, res, next) {
       cisternaIn
     } = req.body;
 
-    console.log('📥 Datos recibidos:', req.body);
+    console.log('📥 Datos recibidos para crear kardex:', req.body);
 
-    // Validación
+    // Validación básica
     if (!kardexIn || kardexIn <= 0) {
       return res.status(400).json({
         success: false,
@@ -58,23 +73,33 @@ async function crearKardexMovimiento(req, res, next) {
 
     const pool = await getPool();
 
-    // ✅ Solo 3 parámetros
+    // ✅ Ejecutar stored procedure para insertar
     const result = await pool.request()
       .input('KardexIn', sql.Float, kardexIn)
       .input('RemisionIn', sql.VarChar(50), remisionIn || null)
       .input('CisternaIn', sql.VarChar(250), cisternaIn || null)
-      .execute('usp_InsertKardexMovimiento');
+      .execute('dbo.usp_InsertKardexMovimiento');
 
     console.log('✅ Kardex insertado:', result.recordset[0]);
 
-    res.json({
+    res.status(201).json({
       success: true,
       message: 'Kardex registrado correctamente',
       data: result.recordset[0]
     });
 
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error('❌ Error al crear kardex:', error);
+
+    // ✅ Detectar error de remisión duplicada
+    if (error.message && error.message.includes('ya está registrada')) {
+      return res.status(409).json({
+        success: false,
+        message: error.message,
+        errorType: 'DUPLICATE_REMISION'
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: 'Error al crear kardex',
@@ -82,6 +107,8 @@ async function crearKardexMovimiento(req, res, next) {
     });
   }
 }
+
+
 
 /**
  * 🔄 Actualizar registro de Kardex
@@ -96,6 +123,8 @@ async function actualizarKardexMovimiento(req, res, next) {
       produccionOut
     } = req.body || {};
 
+    console.log('📝 Actualizando kardex:', { id, ...req.body });
+
     if (!id || isNaN(id)) {
       return res.status(400).json({
         success: false,
@@ -108,13 +137,33 @@ async function actualizarKardexMovimiento(req, res, next) {
     // Verificar que existe
     const check = await pool.request()
       .input('idKardex', sql.Int, parseInt(id))
-      .query('SELECT IdKardex FROM KardexMovimientos WHERE IdKardex = @idKardex');
+      .query('SELECT IdKardex, RemisionIn FROM KardexMovimientos WHERE IdKardex = @idKardex');
 
     if (check.recordset.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Registro de kardex no encontrado'
       });
+    }
+
+    // ✅ Verificar si la nueva remisión ya existe (si cambió)
+    if (remisionIn && remisionIn.trim() !== '' && remisionIn !== check.recordset[0].RemisionIn) {
+      const checkRemision = await pool.request()
+        .input('remision', sql.VarChar(50), remisionIn.trim())
+        .input('idKardex', sql.Int, parseInt(id))
+        .query(`
+          SELECT IdKardex, RemisionIn, TimeStamp 
+          FROM KardexMovimientos 
+          WHERE RemisionIn = @remision AND IdKardex != @idKardex
+        `);
+
+      if (checkRemision.recordset.length > 0) {
+        return res.status(409).json({
+          success: false,
+          message: `La remisión "${remisionIn}" ya está registrada en otro kardex`,
+          errorType: 'DUPLICATE_REMISION'
+        });
+      }
     }
 
     // Actualizar
@@ -134,7 +183,7 @@ async function actualizarKardexMovimiento(req, res, next) {
         WHERE IdKardex = @idKardex
       `);
 
-    console.log('✅ Kardex actualizado:', id);
+    console.log('✅ Kardex actualizado correctamente:', id);
 
     res.json({
       success: true,
@@ -143,7 +192,11 @@ async function actualizarKardexMovimiento(req, res, next) {
 
   } catch (error) {
     console.error('❌ Error en actualizarKardexMovimiento:', error);
-    next(error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al actualizar kardex',
+      error: error.message
+    });
   }
 }
 
@@ -153,6 +206,8 @@ async function actualizarKardexMovimiento(req, res, next) {
 async function eliminarKardexMovimiento(req, res, next) {
   try {
     const { id } = req.params;
+
+    console.log('🗑️ Eliminando kardex:', id);
 
     if (!id || isNaN(id)) {
       return res.status(400).json({
@@ -166,7 +221,7 @@ async function eliminarKardexMovimiento(req, res, next) {
     // Verificar que existe
     const check = await pool.request()
       .input('idKardex', sql.Int, parseInt(id))
-      .query('SELECT IdKardex FROM KardexMovimientos WHERE IdKardex = @idKardex');
+      .query('SELECT IdKardex, RemisionIn FROM KardexMovimientos WHERE IdKardex = @idKardex');
 
     if (check.recordset.length === 0) {
       return res.status(404).json({
@@ -180,7 +235,7 @@ async function eliminarKardexMovimiento(req, res, next) {
       .input('idKardex', sql.Int, parseInt(id))
       .query('DELETE FROM KardexMovimientos WHERE IdKardex = @idKardex');
 
-    console.log('✅ Kardex eliminado:', id);
+    console.log('✅ Kardex eliminado correctamente:', id);
 
     res.json({
       success: true,
@@ -189,7 +244,11 @@ async function eliminarKardexMovimiento(req, res, next) {
 
   } catch (error) {
     console.error('❌ Error en eliminarKardexMovimiento:', error);
-    next(error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al eliminar kardex',
+      error: error.message
+    });
   }
 }
 
